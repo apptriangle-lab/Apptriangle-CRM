@@ -1,0 +1,24 @@
+name: Deploy CRM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Azure VM
+        uses: appleboy/ssh-action@v1.0.3
+
+        with:
+          host: ${{ secrets.CRM_HOST }}
+          username: ${{ secrets.CRM_USER }}
+          key: ${{ secrets.CRM_KEY }}
+
+          script: |
+            cd /var/www/crm/Apptriangle-CRM
+            git pull origin main
+            docker compose up -d --build
