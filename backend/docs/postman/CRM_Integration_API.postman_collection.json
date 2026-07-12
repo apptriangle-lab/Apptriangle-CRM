@@ -1,0 +1,496 @@
+{
+  "info": {
+    "_postman_id": "crm-integration-api-collection",
+    "name": "CRM Integration API",
+    "description": "External integration APIs for CRM (API key auth via `x-api-key` header).\n\n**Endpoints**\n- GET `/employees` — employee directory (includes `joiningDate`)\n- GET `/attendance?month=` — attendance by month\n- GET `/leaves?month=` — leaves overlapping month\n- GET `/expenses?month=` — **unpaid** expenses only\n- POST `/expenses/mark-paid?month=` — mark unpaid expenses as paid for given `userIds`\n- GET `/food-allowances?month=` — monthly food balance per employee\n\n**Setup**\n1. Import this collection into Postman\n2. Open collection → Variables tab\n3. Set `api_key` to match `EXTERNAL_API_KEY` in backend `.env`\n4. Adjust `base_url` if needed (default: http://localhost:5000)\n5. Restart Flask after changing `.env`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "api_key",
+      "value": "your_secure_api_key_here"
+    },
+    {
+      "key": "month",
+      "value": "2026-06"
+    },
+    {
+      "key": "user_ids",
+      "value": "8ae8b792a5c1,abc123def456"
+    }
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "x-api-key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{api_key}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "GET Employees (success)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/employees",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "employees"]
+            },
+            "description": "Returns employee directory. No month param required.\n\n**Row fields:** `employeeId`, `userId`, `name`, `email`, `department`, `designation`, `mobile`, `bankName` (always null), `bankRoutingNumber`, `beneficiaryBankAccountNumber`, `receiverName`, `joiningDate` (YYYY-MM-DD or null), `isActive`"
+          },
+          "response": [
+            {
+              "name": "Example success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/integrations/employees",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "integrations", "employees"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"employeeId\": \"123DFD\",\n      \"userId\": \"8ae8b792a5c1\",\n      \"name\": \"Abdul Hamid\",\n      \"email\": \"hamid@gmail.com\",\n      \"department\": \"Engineering\",\n      \"designation\": \"Developer\",\n      \"mobile\": \"+8801...\",\n      \"bankName\": null,\n      \"bankRoutingNumber\": \"123456\",\n      \"beneficiaryBankAccountNumber\": \"9876543210\",\n      \"receiverName\": \"Abdul Hamid\",\n      \"joiningDate\": \"2024-03-15\",\n      \"isActive\": true\n    }\n  ],\n  \"meta\": {\n    \"count\": 1\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {
+          "name": "GET Attendance by month (success)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/attendance?month={{month}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "attendance"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}",
+                  "description": "YYYY-MM"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Attendance - missing month (400)",
+          "request": {
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "x-api-key",
+                  "type": "string"
+                },
+                {
+                  "key": "value",
+                  "value": "{{api_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "in",
+                  "value": "header",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/attendance",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "attendance"]
+            },
+            "description": "Expect 400: month query parameter is required"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Attendance - invalid month (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/attendance?month=2026-13",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "attendance"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2026-13"
+                }
+              ]
+            },
+            "description": "Expect 400: month must be in YYYY-MM format"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Leaves",
+      "item": [
+        {
+          "name": "GET Leaves by month (success)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/leaves?month={{month}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "leaves"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "item": [
+        {
+          "name": "GET Expenses by month (success)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/expenses?month={{month}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "expenses"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}"
+                }
+              ]
+            },
+            "description": "Returns **unpaid** expense entries for the month in `data.entries` plus `data.summary` (`totalAmount`, `paidAmount` always 0, `unpaidAmount`, `entryCount`). Paid expenses are excluded."
+          },
+          "response": [
+            {
+              "name": "Example success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/integrations/expenses?month=2026-06",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "integrations", "expenses"],
+                  "query": [
+                    {
+                      "key": "month",
+                      "value": "2026-06"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"entries\": [\n      {\n        \"employeeId\": \"123DFD\",\n        \"employeeName\": \"Abdul Hamid\",\n        \"expenseType\": \"Travel\",\n        \"amount\": 1500.0,\n        \"date\": \"2026-06-10\",\n        \"status\": \"unpaid\",\n        \"remarks\": \"Client visit\",\n        \"fromLocation\": \"Dhaka\",\n        \"toLocation\": \"Chittagong\",\n        \"month\": \"2026-06\"\n      }\n    ],\n    \"summary\": {\n      \"totalAmount\": 1500.0,\n      \"paidAmount\": 0,\n      \"unpaidAmount\": 1500.0,\n      \"entryCount\": 1\n    }\n  },\n  \"meta\": {\n    \"month\": \"2026-06\",\n    \"entryCount\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Mark expenses paid by month + userIds (query)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/expenses/mark-paid?month={{month}}&userIds={{user_ids}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "expenses", "mark-paid"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}",
+                  "description": "YYYY-MM"
+                },
+                {
+                  "key": "userIds",
+                  "value": "{{user_ids}}",
+                  "description": "Comma-separated CRM userId values from GET /employees"
+                }
+              ]
+            },
+            "description": "Marks **unpaid** expenses as **paid** for the given month and users only.\n\nUse `userId` from GET /employees (not `employeeId`). Matches expenses where `created_by_user_id` is in the list."
+          },
+          "response": [
+            {
+              "name": "Example success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/integrations/expenses/mark-paid?month=2026-06&userIds=8ae8b792a5c1,abc123def456",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "integrations", "expenses", "mark-paid"],
+                  "query": [
+                    {
+                      "key": "month",
+                      "value": "2026-06"
+                    },
+                    {
+                      "key": "userIds",
+                      "value": "8ae8b792a5c1,abc123def456"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"month\": \"2026-06\",\n    \"userIds\": [\"8ae8b792a5c1\", \"abc123def456\"],\n    \"updatedCount\": 5,\n    \"totalAmountMarkedPaid\": 12500.0\n  },\n  \"meta\": {\n    \"month\": \"2026-06\",\n    \"userIds\": [\"8ae8b792a5c1\", \"abc123def456\"],\n    \"updatedCount\": 5\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Mark expenses paid by month + userIds (JSON body)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\n    \"8ae8b792a5c1\",\n    \"abc123def456\",\n    \"def789ghi012\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/integrations/expenses/mark-paid?month={{month}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "expenses", "mark-paid"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}",
+                  "description": "YYYY-MM"
+                }
+              ]
+            },
+            "description": "Same as query `userIds`, but pass the array in the JSON body. `month` stays in the query string."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Mark expenses paid - missing userIds (400)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/expenses/mark-paid?month={{month}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "expenses", "mark-paid"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}"
+                }
+              ]
+            },
+            "description": "Expect 400: userIds is required"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Food Allowances",
+      "item": [
+        {
+          "name": "GET Food allowances by month (success)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/food-allowances?month={{month}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "food-allowances"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}",
+                  "description": "YYYY-MM"
+                }
+              ]
+            },
+            "description": "One row per active employee with monthly net food balance (not per-meal rows).\n\n**Row fields**\n- `employeeId`, `employeeName`, `month`\n- `foodBalanceTotal` (signed): negative = office meal deduction, positive = personal credit, 0 = no activity\n\n**meta fields**\n- `month`, `count`\n- `totalFoodBalance` — net sum (positive + negative)\n- `totalPositiveFoodBalance` — sum of positive employee totals\n- `totalNegativeFoodBalance` — sum of negative employee totals"
+          },
+          "response": [
+            {
+              "name": "Example success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/integrations/food-allowances?month=2026-06",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "integrations", "food-allowances"],
+                  "query": [
+                    {
+                      "key": "month",
+                      "value": "2026-06"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"employeeId\": \"EMP-001\",\n      \"employeeName\": \"Jane Doe\",\n      \"month\": \"2026-06\",\n      \"foodBalanceTotal\": -260.0\n    },\n    {\n      \"employeeId\": \"EMP-002\",\n      \"employeeName\": \"John Smith\",\n      \"month\": \"2026-06\",\n      \"foodBalanceTotal\": 65.0\n    },\n    {\n      \"employeeId\": \"EMP-003\",\n      \"employeeName\": \"Alex Lee\",\n      \"month\": \"2026-06\",\n      \"foodBalanceTotal\": 0\n    }\n  ],\n  \"meta\": {\n    \"month\": \"2026-06\",\n    \"count\": 3,\n    \"totalFoodBalance\": -195.0,\n    \"totalPositiveFoodBalance\": 260.0,\n    \"totalNegativeFoodBalance\": -455.0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET Food allowances - missing month (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/food-allowances",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "food-allowances"]
+            },
+            "description": "Expect 400: month query parameter is required"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Food allowances - invalid month (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/food-allowances?month=2026-13",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "food-allowances"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2026-13"
+                }
+              ]
+            },
+            "description": "Expect 400: month must be in YYYY-MM format"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth errors",
+      "item": [
+        {
+          "name": "GET Employees - missing API key (401)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/employees",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "employees"]
+            },
+            "description": "Expect 401: API key is required"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Employees - invalid API key (403)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "invalid-key-for-testing",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/integrations/employees",
+              "host": ["{{base_url}}"],
+              "path": ["api", "integrations", "employees"]
+            },
+            "description": "Expect 403: Invalid API key"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

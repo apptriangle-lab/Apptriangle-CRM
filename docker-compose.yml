@@ -1,0 +1,109 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_allowed_packet=256M
+      - --innodb_buffer_pool_size=256M
+      - --wait_timeout=28800
+      - --interactive_timeout=28800
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-crm}
+      MYSQL_USER: ${MYSQL_USER:-crm}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+    volumes:
+      - crm_db_data:/var/lib/mysql
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks:
+      - crm
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "5000"
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-${SECRET_KEY}}
+      JWT_EXPIRY_HOURS: ${JWT_EXPIRY_HOURS:-0}
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-crm}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE:-crm}
+      INSTANCE_DIR: /data/crm-instance
+      PMS_UPLOAD_DIR: /data/crm-instance/pms_attachments
+      CRM_ADMIN_EMAIL: ${CRM_ADMIN_EMAIL:-admin@example.com}
+      CRM_ADMIN_PASSWORD: ${CRM_ADMIN_PASSWORD:-change-me}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      EXTERNAL_API_KEY: ${EXTERNAL_API_KEY:-}
+      ZEPTOMAIL_API_TOKEN: ${ZEPTOMAIL_API_TOKEN:-}
+      ZEPTOMAIL_FROM_EMAIL: ${ZEPTOMAIL_FROM_EMAIL:-}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      MAIL_SERVER: ${MAIL_SERVER:-}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      CREDENTIALS_FERNET_KEY: ${CREDENTIALS_FERNET_KEY:-}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-8}
+    volumes:
+      - crm_instance_data:/data/crm-instance
+    # API is proxied via frontend nginx. Uncomment to expose backend directly:
+    # ports:
+    #   - "${BACKEND_PORT:-5000}:5000"
+    networks:
+      - crm
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: SAME_ORIGIN
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks:
+      - crm
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      PMA_ABSOLUTE_URI: ${PMA_ABSOLUTE_URI:-http://localhost:8082/}
+      UPLOAD_LIMIT: 512M
+      MEMORY_LIMIT: 512M
+      MAX_EXECUTION_TIME: 600
+    volumes:
+      - ./docker/phpmyadmin/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php:ro
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    networks:
+      - crm
+
+volumes:
+  crm_db_data:
+  crm_instance_data:
+
+networks:
+  crm:
+    driver: bridge
